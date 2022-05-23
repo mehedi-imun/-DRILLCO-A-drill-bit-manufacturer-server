@@ -40,7 +40,7 @@ async function run() {
     const productCollection = client.db("drillco").collection('products');
     const orderCollection = client.db("drillco").collection('order');
     // get all products
-    app.get('/products', jwtVerifyUser, async (req, res) => {
+    app.get('/products', async (req, res) => {
       const result = await productCollection.find().toArray()
       res.send(result)
     });
@@ -52,11 +52,41 @@ async function run() {
       res.send(result)
 
     });
+    // update product quantity by id
+    app.put('/update-quantity/:id', jwtVerifyUser, async (req,res)=>{
+      const id = req.params.id;
+      const quantity = req.body.updateQuantity
+      console.log(quantity);
+      const filter = {_id: ObjectId(id)};
+      const updatedDoc = {
+        $set:{
+          availableQuantity : quantity,
+        }
+
+       }
+       const result = await productCollection.updateOne(filter,updatedDoc);
+       res.send(result)
+    })
+
+
     // post order
     app.post('/order', jwtVerifyUser, async(req,res)=>{
       const order = req.body
       const result = await orderCollection.insertOne(order)
       res.send(result)
+
+    });
+    // get order by email 
+    app.get('/order',jwtVerifyUser,async(req,res)=>{
+      const userEmail = req.query.userEmail
+      const decodedEmail = req?.decoded?.email
+      if(userEmail === decodedEmail){
+        const query = {userEmail:userEmail};
+        const result = await orderCollection.find(query).toArray();
+         return res.send(result)
+      }else{
+        return res.status(403).send({message:'forbidden'})
+      }
 
     })
 
