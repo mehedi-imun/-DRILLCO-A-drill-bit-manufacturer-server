@@ -38,14 +38,29 @@ async function run() {
   try {
     await client.connect();
     const productCollection = client.db("drillco").collection('products');
+    // get all products
+    app.get('/products', jwtVerifyUser, async (req, res) => {
+      const result = await productCollection.find().toArray()
+      res.send(result)
+    });
+    // get product by id
+    app.get('/product/:id', jwtVerifyUser, async (req, res) => {
+      const id = req.params.id
+      const query = { _id: ObjectId(id) }
+      const result = await productCollection.findOne(query);
+      res.send(result)
 
-    app.get('/products',async(req,res)=>{
-        const result = await productCollection.find().toArray()
-        res.send(result)
     })
-    
 
 
+    // authentication send token
+    app.post('/get-token', async (req, res) => {
+      const user = req.body
+      const accessToken = jwt.sign(user, process.env.ACCESS_JWT_TOKEN_SECRET, {
+        expiresIn: '2d'
+      });
+      res.send(accessToken)
+    })
 
   } finally {
     //   await client.close();
