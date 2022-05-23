@@ -38,6 +38,7 @@ async function run() {
   try {
     await client.connect();
     const productCollection = client.db("drillco").collection('products');
+    const usersCollection = client.db("drillco").collection('user');
     const orderCollection = client.db("drillco").collection('order');
     // get all products
     app.get('/products', async (req, res) => {
@@ -95,18 +96,60 @@ async function run() {
       const filter = { userEmail: email }
       const result = await orderCollection.deleteOne(filter)
       res.send(result)
+    });
+    // get all user
+    app.get('/users', jwtVerifyUser, async (req, res) => {
+      const result = await usersCollection.find().toArray()
+      res.send(result)
+    });
+    // make admin 
+    app.put('/user/admin/:email', jwtVerifyUser, async (req, res) => {
+      const requester =  req.decoded.email
+      const requesterAccount = await usersCollection.findOne({email:requester});
+      const email = req.params.email;
+      if(requesterAccount.role === 'admin'){
+        const filter = { email: email }
+      const updatedDoc = {
+        $set: { role: 'admin' },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+      }else{
+        return res.status(403).send({ message: 'forbidden' })
+      }
+      
+    });
+    // delete admin 
+    app.delete('/user/admin:email', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email }
+      const result = await usersCollection.deleteOne(filter)
+      res.send(result)
+    });
+    // get admin 
+    app.get('/admin/:email', async (req,res)=>{
+      const email = req.params.email
+      const user = await usersCollection.findOne({email:email});
+      const isAdmin = user.role === 'admin'
+      res.send({admin:isAdmin})
     })
 
 
 
-    // authentication send token
-    app.post('/get-token', async (req, res) => {
-      const user = req.body
-      const accessToken = jwt.sign(user, process.env.ACCESS_JWT_TOKEN_SECRET, {
-        expiresIn: '2d'
-      });
-      res.send(accessToken)
+    // authentication send token and save user 
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email }
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: user,
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc, options);
+      const accessToken = jwt.sign({ email: email }, process.env.ACCESS_JWT_TOKEN_SECRET, { expiresIn: '2 days' });
+      res.send({ result, accessToken })
     })
+
 
   } finally {
     //   await client.close();
