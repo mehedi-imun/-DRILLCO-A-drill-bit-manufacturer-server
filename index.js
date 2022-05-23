@@ -38,6 +38,7 @@ async function run() {
   try {
     await client.connect();
     const productCollection = client.db("drillco").collection('products');
+    const orderCollection = client.db("drillco").collection('order');
     // get all products
     app.get('/products', jwtVerifyUser, async (req, res) => {
       const result = await productCollection.find().toArray()
@@ -50,7 +51,15 @@ async function run() {
       const result = await productCollection.findOne(query);
       res.send(result)
 
+    });
+    // post order
+    app.post('/order', jwtVerifyUser, async(req,res)=>{
+      const order = req.body
+      const result = await orderCollection.insertOne(order)
+      res.send(result)
+
     })
+
 
 
     // authentication send token
