@@ -5,7 +5,7 @@ const port = process.env.PORT || 5000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 //middleware
 app.use(cors())
 app.use(express.json());
@@ -40,6 +40,8 @@ async function run() {
     const productCollection = client.db("drillco").collection('products');
     const usersCollection = client.db("drillco").collection('user');
     const orderCollection = client.db("drillco").collection('order');
+    const reviewsCollection = client.db("drillco").collection('reviews');
+    const paymentCollection = client.db("drillco").collection('payment');
     // get all products
     app.get('/products', async (req, res) => {
       const result = await productCollection.find().toArray()
@@ -90,6 +92,14 @@ async function run() {
       }
 
     });
+    // get order by id
+    app.get('/order/:id', jwtVerifyUser, async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id:ObjectId(id)};
+      const result = await orderCollection.findOne(query);
+      res.send(result)
+    })
+
     // delete order api
     app.delete('/order/:email', jwtVerifyUser, async (req, res) => {
       const email = req.params.email;
@@ -127,11 +137,17 @@ async function run() {
       res.send(result)
     });
     // get admin 
-    app.get('/admin/:email', async (req,res)=>{
+    app.get('/admin/:email', jwtVerifyUser, async (req,res)=>{
       const email = req.params.email
       const user = await usersCollection.findOne({email:email});
       const isAdmin = user.role === 'admin'
       res.send({admin:isAdmin})
+    });
+
+    // get reviews 
+    app.get('/reviews' , async(req,res)=>{
+      const result = await reviewsCollection.find().toArray()
+      res.send(result)
     })
 
 
@@ -148,6 +164,42 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updatedDoc, options);
       const accessToken = jwt.sign({ email: email }, process.env.ACCESS_JWT_TOKEN_SECRET, { expiresIn: '2 days' });
       res.send({ result, accessToken })
+    });
+
+    // payment 
+    app.post("/create-payment-intent",jwtVerifyUser, async (req, res) => {
+      const service = req.body;
+      const price = service.price
+      const amount = price*100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types:['card']
+    
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // post payment 
+    app.patch('/payment-booking/:id', jwtVerifyUser, async(req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: ObjectId(id)};
+      const payment = req.body;
+      const updatedDoc = {
+       $set:{
+        transactionID : payment.transactionId,
+        paid:true
+
+       }
+
+      }
+      const result = await orderCollection.updateOne(filter,updatedDoc)
+      const updatedBooking = await paymentCollection.insertOne(payment)
+      res.send(result)
     })
 
 
