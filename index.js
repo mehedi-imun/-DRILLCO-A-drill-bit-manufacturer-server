@@ -92,6 +92,32 @@ async function run() {
       }
 
     });
+
+
+
+    // update status order by id 
+  
+    app.put('/order-status/:id', jwtVerifyUser, async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          statusPending: false,
+        }
+
+      }
+      const result = await orderCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
+
+
+    // get all order
+    
+    app.get('/all-order', jwtVerifyUser, async(req,res)=>{
+      const result = await orderCollection.find().toArray()
+      res.send(result)
+    })
     // get order by id
     app.get('/order/:id', jwtVerifyUser, async(req,res)=>{
       const id = req.params.id;
@@ -112,6 +138,27 @@ async function run() {
       const result = await usersCollection.find().toArray()
       res.send(result)
     });
+    // get  user email
+    
+    app.get('/user/:email', jwtVerifyUser,  async (req, res) => {
+      const email = req.params.email
+      const result = await usersCollection.findOne({email:email});
+      res.send(result)
+    });
+
+    //update user data
+    app.patch('/user/:email',jwtVerifyUser,async(req,res)=>{
+      const email = req.params.email
+      const filter = { email: email }
+      
+      const updatedDoc = {
+        $set: req.body ,
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+
+    })
+
     // make admin 
     app.put('/user/admin/:email', jwtVerifyUser, async (req, res) => {
       const requester =  req.decoded.email
@@ -130,7 +177,7 @@ async function run() {
       
     });
     // delete admin 
-    app.delete('/user/admin:email', async (req, res) => {
+    app.delete('/admin/:email',jwtVerifyUser, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email }
       const result = await usersCollection.deleteOne(filter)
@@ -148,6 +195,13 @@ async function run() {
     app.get('/reviews' , async(req,res)=>{
       const result = await reviewsCollection.find().toArray()
       res.send(result)
+    });
+    //add review 
+    app.post('/review', jwtVerifyUser, async(req,res)=>{
+      const review= req.body.review;
+      const result = await reviewsCollection.insertOne(review);
+      res.send(result)
+
     })
 
 
@@ -192,7 +246,8 @@ async function run() {
       const updatedDoc = {
        $set:{
         transactionID : payment.transactionId,
-        paid:true
+        paid:true,
+        statusPending:true
 
        }
 
