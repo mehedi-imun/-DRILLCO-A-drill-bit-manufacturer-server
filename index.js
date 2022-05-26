@@ -42,6 +42,24 @@ async function run() {
     const orderCollection = client.db("drillco").collection('order');
     const reviewsCollection = client.db("drillco").collection('reviews');
     const paymentCollection = client.db("drillco").collection('payment');
+
+
+    // delete product
+    app.delete('/product/:id',jwtVerifyUser,async(req,res)=>{
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) }
+      const result = await productCollection.deleteOne(query);
+      res.send(result)
+
+    })
+    // add product
+    app.post('/add-product',jwtVerifyUser,async(req,res)=>{
+      const product= req.body.product;
+      const result = await productCollection.insertOne(product)
+      res.send(result)
+    });
+
+
     // get all products
     app.get('/products', async (req, res) => {
       const result = await productCollection.find().toArray()
