@@ -1,9 +1,10 @@
 {
     "version": 2,
-    "name": "nodejs-express",
+    "name": "drillco",
     "builds": [
         { "src": "index.js", "use": "@now/node" }
     ],
     "routes": [
         { "src": "/(.*)", "dest": "index.js" }
     ]
+}
